@@ -117,6 +117,30 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         },
       },
     },
+    {
+      name: 'session_flow',
+      description:
+        'Returns the current 5QLN session flow — phase, XYZAB state, depth, and coherence. Use to report the living state of a constitutional session.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          phase: {
+            type: 'string',
+            enum: ['S', 'G', 'Q', 'P', 'V'],
+            description: 'Current 5QLN phase.',
+          },
+          x: { type: 'string', description: 'X — Validated Spark (question)' },
+          y: { type: 'string', description: 'Y — Validated Pattern (essence)' },
+          z: { type: 'string', description: 'Z — Resonant Key (what clicked)' },
+          a: { type: 'string', description: 'A — Flow (gradient)' },
+          b: { type: 'string', description: 'B — Benefit (crystallized)' },
+          depth: { type: 'integer', description: 'Fractal depth (0 = surface, 1+ = deepened)' },
+          phases_visited: { type: 'array', items: { type: 'string' }, description: 'Phases traversed' },
+          lenses_used: { type: 'array', items: { type: 'string' }, description: 'Lenses applied' },
+        },
+        required: ['phase'],
+      },
+    },
   ],
 }));
 
@@ -191,6 +215,39 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
     };
   }
+  if (name === 'session_flow') {
+    if (!args) return { content: [{ type: 'text', text: 'Missing args' }] };
+    const phase = args.phase as string;
+    const x = (args.x as string) || null;
+    const y = (args.y as string) || null;
+    const z = (args.z as string) || null;
+    const a = (args.a as string) || null;
+    const b = (args.b as string) || null;
+    const depth = (args.depth as number) || 0;
+    const phasesVisited = (args.phases_visited as string[]) || [];
+    const lensesUsed = (args.lenses_used as string[]) || [];
+    const filled = [x, y, z, a, b].filter(Boolean).length;
+
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          phase,
+          phase_name: ({ S: 'RECEIVE', G: 'ILLUMINATE', Q: 'RESONATE', P: 'FLOW', V: 'CRYSTALLIZE' } as Record<string,string>)[phase],
+          outputs: { X: x, Y: y, Z: z, A: a, B: b },
+          outputs_filled: filled,
+          depth,
+          phases_visited: phasesVisited,
+          lenses_used: lensesUsed,
+          progress: `${filled}/5 outputs filled`,
+          status: filled === 5 ? 'complete' : filled > 0 ? 'active' : 'nascent',
+          corruption_watch: ({ S: ['L1','L2'], G: ['L2','L1'], Q: ['L3','L4'], P: ['L4'], V: ['V0'] } as Record<string,string[]>)[phase],
+        }, null, 2),
+      }],
+    };
+  }
+
+
 
   return {
     content: [
@@ -324,8 +381,3 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
     ],
   };
 });
-
-// ─── Start ─────────────────────────────────────────────────
-
-const transport = new StdioServerTransport();
-await server.connect(transport);
